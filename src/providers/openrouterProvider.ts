@@ -4,7 +4,7 @@ import { BaseProvider, CompletionRequest, CompletionResponse, ProviderStatus } f
 export class OpenRouterProvider extends BaseProvider {
 	private readonly baseUrl = 'https://openrouter.ai/api/v1';
 
-	constructor() {
+	constructor(private readonly model: string) {
 		super('OpenRouter');
 	}
 
@@ -15,7 +15,7 @@ export class OpenRouterProvider extends BaseProvider {
 			const response = await axios.post(
 				`${this.baseUrl}/chat/completions`,
 				{
-					model: 'mistralai/mistral-7b-instruct:free',
+					model: this.model,
 					messages: [{ role: 'user', content: request.prompt }],
 					max_tokens: request.maxTokens || 256,
 					temperature: request.temperature || 0.7,

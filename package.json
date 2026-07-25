@@ -11,11 +11,6 @@
     "Other",
     "AI"
   ],
-  "activationEvents": [
-    "onLanguage",
-    "onCommand:freeLlmRouter.configure",
-    "onCommand:freeLlmRouter.complete"
-  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -38,21 +33,6 @@
     "configuration": {
       "title": "Free LLM Router",
       "properties": {
-        "freeLlmRouter.groqApiKey": {
-          "type": "string",
-          "markdownDescription": "Groq API Key from https://console.groq.com",
-          "scope": "machine"
-        },
-        "freeLlmRouter.openrouterApiKey": {
-          "type": "string",
-          "markdownDescription": "OpenRouter API Key from https://openrouter.ai",
-          "scope": "machine"
-        },
-        "freeLlmRouter.cohereApiKey": {
-          "type": "string",
-          "markdownDescription": "Cohere API Key from https://cohere.com",
-          "scope": "machine"
-        },
         "freeLlmRouter.enabledProviders": {
           "type": "array",
           "default": [
@@ -66,7 +46,8 @@
               "openrouter",
               "cohere",
               "cloudflare",
-              "mistral"
+              "mistral",
+              "cerebras"
             ]
           },
           "description": "Which providers to use for completions"
@@ -80,7 +61,19 @@
           "type": "integer",
           "default": 256,
           "description": "Maximum tokens per completion"
-        }
+        },
+        "freeLlmRouter.cloudflareAccountId": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Cloudflare account ID (required only for Cloudflare Workers AI)"
+        },
+        "freeLlmRouter.groqModel": { "type": "string", "default": "llama-3.3-70b-versatile" },
+        "freeLlmRouter.openrouterModel": { "type": "string", "default": "meta-llama/llama-3.3-70b-instruct:free" },
+        "freeLlmRouter.cohereModel": { "type": "string", "default": "command-a-03-2025" },
+        "freeLlmRouter.mistralModel": { "type": "string", "default": "mistral-small-latest" },
+        "freeLlmRouter.cerebrasModel": { "type": "string", "default": "gpt-oss-120b" },
+        "freeLlmRouter.cloudflareModel": { "type": "string", "default": "@cf/meta/llama-3.1-8b-instruct" }
       }
     }
   },
@@ -89,14 +82,14 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./dist/test/rateLimiter.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^10.8.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "eslint": "^9.30.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {

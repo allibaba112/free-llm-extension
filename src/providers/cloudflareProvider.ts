@@ -1,2 +1,24 @@
-import axios from 'axios';\nimport { BaseProvider, CompletionRequest, CompletionResponse, ProviderStatus } from './baseProvider';\n\nexport class CloudflareProvider extends BaseProvider {\n\tprivate accountId: string | null = null;\n\tprivate readonly baseUrl = 'https://api.cloudflare.com/client/v4';\n\n\tconstructor() {\n\t\tsuper('Cloudflare');\n\t}\n\n\tsetAccountId(accountId: string) {\n\t\tthis.accountId = accountId;\n\t}\n\n\tasync getCompletion(request: CompletionRequest): Promise<CompletionResponse> {\n\t\tif (!this.apiKey || !this.accountId) {\n\t\t\tthrow new Error('Cloudflare API key or account ID not configured');\n\t\t}\n\n\t\ttry {\n\t\t\tconst response = await axios.post(\n\t\t\t\t`${this.baseUrl}/accounts/${this.accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`,\n\t\t\t\t{\n\t\t\t\t\tprompt: request.prompt,\n\t\t\t\t\tmax_tokens: request.maxTokens || 256,\n\t\t\t\t\ttemperature: request.temperature || 0.7,\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\theaders: {\n\t\t\t\t\t\tAuthorization: `Bearer ${this.apiKey}`,\n\t\t\t\t\t\t'Content-Type': 'application/json',\n\t\t\t\t\t},\n\t\t\t\t}\n\t\t\t);\n\n\t\t\tif (!response.data.success) {\n\t\t\t\tthrow new Error(`Cloudflare error: ${response.data.errors?.[0]?.message || 'Unknown error'}`);\n\t\t\t}\n\n\t\t\treturn {\n\t\t\t\ttext: response.data.result?.response || '',\n\t\t\t\tmodel: '@cf/meta/llama-3.1-8b-instruct',\n\t\t\t\ttokensUsed: 0, // Cloudflare doesn't return token count\n\t\t\t};\n\t\t} catch (error: any) {\n\t\t\tthrow new Error(`Cloudflare API error: ${error.response?.data?.errors?.[0]?.message || error.message}`);\n\t\t}\n\t}\n\n\tgetStatus(): ProviderStatus {\n\t\treturn {\n\t\t\tname: this.providerName,\n\t\t\tavailable: this.isConfigured() && !!this.accountId,\n\t\t\trateLimitUsage: '10,000 neurons/day',\n\t\t};\n\t}\n}\n",
-<parameter name="branch">main
+import axios from 'axios';
+import { BaseProvider, CompletionRequest, CompletionResponse, ProviderStatus } from './baseProvider';
+
+export class CloudflareProvider extends BaseProvider {
+	private accountId: string | null = null;
+	private readonly baseUrl = 'https://api.cloudflare.com/client/v4';
+
+	constructor(private readonly model: string) { super('Cloudflare'); }
+
+	setAccountId(accountId: string | null): void { this.accountId = accountId; }
+
+	async getCompletion(request: CompletionRequest): Promise<CompletionResponse> {
+		if (!this.apiKey || !this.accountId) throw new Error('Cloudflare API token or account ID not configured');
+		try {
+			const response = await axios.post(`${this.baseUrl}/accounts/${this.accountId}/ai/run/${this.model}`, {
+				prompt: request.prompt, max_tokens: request.maxTokens, temperature: request.temperature,
+			}, { headers: { Authorization: `Bearer ${this.apiKey}` }, timeout: 30_000 });
+			if (!response.data.success) throw new Error(response.data.errors?.[0]?.message ?? 'Unknown error');
+			return { text: response.data.result?.response ?? '', model: this.model, tokensUsed: 0 };
+		} catch (error: any) { throw new Error(`Cloudflare API error: ${error.response?.data?.errors?.[0]?.message ?? error.message}`); }
+	}
+
+	getStatus(): ProviderStatus { return { name: 'Cloudflare', available: this.isConfigured() && !!this.accountId, rateLimitUsage: 'Provider-managed quota' }; }
+}
