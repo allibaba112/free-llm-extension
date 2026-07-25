@@ -26,6 +26,10 @@ export abstract class BaseProvider {
 
 	constructor(protected providerName: string) {}
 
+	get id(): string {
+		return this.providerName.toLowerCase();
+	}
+
 	abstract getCompletion(request: CompletionRequest): Promise<CompletionResponse>;
 	abstract getStatus(): ProviderStatus;
 
@@ -43,6 +47,9 @@ export abstract class BaseProvider {
 	}
 
 	protected getRateLimitStatus(): string {
+		if (this.rateLimitRemaining === 0 && this.rateLimitReset.getTime() <= Date.now()) {
+			return 'Unknown (checked after first request)';
+		}
 		const now = new Date();
 		const secondsUntilReset = (this.rateLimitReset.getTime() - now.getTime()) / 1000;
 		return `${this.rateLimitRemaining} remaining (resets in ${Math.max(0, Math.ceil(secondsUntilReset))}s)`;

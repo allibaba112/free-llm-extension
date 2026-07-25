@@ -1,6 +1,10 @@
 import { GroqProvider } from './groqProvider';
 import { OpenRouterProvider } from './openrouterProvider';
-import { BaseProvider, CompletionResponse, ProviderStatus } from './baseProvider';
+import { CohereProvider } from './cohereProvider';
+import { CloudflareProvider } from './cloudflareProvider';
+import { MistralProvider } from './mistralProvider';
+import { CerebrasProvider } from './cerebrasProvider';
+import { BaseProvider, ProviderStatus } from './baseProvider';
 import { ConfigManager } from '../utils/config';
 import { RateLimiter } from '../utils/rateLimiter';
 
@@ -13,24 +17,30 @@ export class ProviderManager {
 		this.rateLimiter = new RateLimiter();
 	}
 
-	async initialize() {
-		const groqProvider = new GroqProvider();
-		const openRouterProvider = new OpenRouterProvider();
+	async initialize(): Promise<void> {
+		const providers: BaseProvider[] = [
+			new GroqProvider(this.configManager.getModel('groq', 'llama-3.3-70b-versatile')),
+			new OpenRouterProvider(this.configManager.getModel('openrouter', 'meta-llama/llama-3.3-70b-instruct:free')),
+			new CohereProvider(this.configManager.getModel('cohere', 'command-a-03-2025')),
+			new MistralProvider(this.configManager.getModel('mistral', 'mistral-small-latest')),
+			new CerebrasProvider(this.configManager.getModel('cerebras', 'gpt-oss-120b')),
+			new CloudflareProvider(this.configManager.getModel('cloudflare', '@cf/meta/llama-3.1-8b-instruct')),
+		];
 
-		const groqKey = this.configManager.getApiKey('groq');
-		const openRouterKey = this.configManager.getApiKey('openrouter');
-
-		if (groqKey) groqProvider.setApiKey(groqKey);
-		if (openRouterKey) openRouterProvider.setApiKey(openRouterKey);
-
-		this.providers.set('groq', groqProvider);
-		this.providers.set('openrouter', openRouterProvider);
+		for (const provider of providers) {
+			const key = await this.configManager.getApiKey(provider.id);
+			if (key) provider.setApiKey(key);
+			if (provider instanceof CloudflareProvider) {
+				provider.setAccountId(this.configManager.getCloudflareAccountId());
+			}
+			this.providers.set(provider.id, provider);
+		}
 	}
 
 	async getCompletion(prompt: string): Promise<string> {
 		const enabledProviders = this.configManager.getEnabledProviders();
 		const availableProviders = Array.from(this.providers.values()).filter(
-			(p) => enabledProviders.includes((p as any).providerName.toLowerCase()) && p.isConfigured()
+			(p) => enabledProviders.includes(p.id) && p.isConfigured()
 		);
 
 		if (availableProviders.length === 0) {

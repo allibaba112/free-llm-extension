@@ -4,7 +4,7 @@ import { BaseProvider, CompletionRequest, CompletionResponse, ProviderStatus } f
 export class GroqProvider extends BaseProvider {
 	private readonly baseUrl = 'https://api.groq.com/openai/v1';
 
-	constructor() {
+	constructor(private readonly model: string) {
 		super('Groq');
 	}
 
@@ -15,7 +15,7 @@ export class GroqProvider extends BaseProvider {
 			const response = await axios.post(
 				`${this.baseUrl}/chat/completions`,
 				{
-					model: 'mixtral-8x7b-32768',
+					model: this.model,
 					messages: [{ role: 'user', content: request.prompt }],
 					max_tokens: request.maxTokens || 256,
 					temperature: request.temperature || 0.7,
@@ -52,7 +52,7 @@ export class GroqProvider extends BaseProvider {
 	getStatus(): ProviderStatus {
 		return {
 			name: this.providerName,
-			available: this.isConfigured() && this.rateLimitRemaining > 0,
+			available: this.isConfigured(),
 			rateLimitUsage: this.getRateLimitStatus(),
 			nextReset: this.rateLimitReset,
 		};
